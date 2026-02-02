@@ -579,43 +579,38 @@
     }
 
 
-    window.sendAIMessage = async function() {
-        const input = document.getElementById('ai-input');
-        const text = input.value;
-        if (!text) return;
-        
-        if(!globalApiKey || !genAI) {
-            alert("Por favor, clique no ícone de chave e configure sua API Key.");
-            return;
-        }
-        
-        appendMessage('user', text);
-        input.value = '';
-
-
-        try {
-            if (!chatSession) {
-                const model = genAI.getGenerativeModel({ model: MODEL_NAME });
-                chatSession = model.startChat({
-                    history: [
-                        { role: "user", parts: [{ text: "Você é o KeyMaster AI. Ajude no gerenciamento de projetos." }] },
-                        { role: "model", parts: [{ text: "Entendido." }] }
-                    ]
-                });
+            window.sendAIMessage = async function() {
+            const input = document.getElementById('ai-input');
+            const text = input.value;
+            if (!text) return;
+            if(!globalApiKey || !genAI) {
+                alert("Configure a API Key na engrenagem.");
+                return;
             }
+            appendMessage('user', text);
+            input.value = '';
+            try {
+                // FORÇA A VERSÃO v1 PARA EVITAR ERRO 404
+                const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" }, { apiVersion: 'v1' });
+                if (!chatSession) {
+                    chatSession = model.startChat({
+                        history: [
+                            { role: "user", parts: [{ text: "Você é o KeyMaster AI." }] },
+                            { role: "model", parts: [{ text: "Entendido." }] }
+                        ]
+                    });
+                }
+                let context = activeProject ? `[Contexto: ${activeProject.name}] ` : "";
+                const result = await chatSession.sendMessage(context + text);
+                const response = await result.response;
+                appendMessage('bot', response.text());
+            } catch (error) { 
+                console.error(error);
+                appendMessage('bot', "Erro na IA: " + error.message); 
+                chatSession = null;
+            }
+        }
 
-
-            let context = activeProject ? `[Projeto: ${activeProject.name}, Aba: ${activeProject.currentTab}] ` : "";
-            const result = await chatSession.sendMessage(context + text);
-            const response = await result.response;
-            appendMessage('bot', response.text());
-
-
-        } catch (error) { 
-            console.error(error);
-            let msg = "Erro na IA: " + error.message;
-            if (error.message.includes("API key")) msg = "⚠️ API Key inválida. Verifique no Google AI Studio.";
-            appendMessage('bot', msg); 
             chatSession = null; // Reseta sessão em caso de erro
         }
     }
@@ -643,4 +638,5 @@
     }
 </script>
 </body>
+
 </html>
