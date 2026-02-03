@@ -1,0 +1,698 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>KeyMaster Suite - Project Manager</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script type="importmap">
+      {
+        "imports": {
+          "@google/generative-ai": "https://esm.run/@google/generative-ai"
+        }
+      }
+    </script>
+
+
+    <style>
+        :root {
+            /* TEMA CLARO & PALETA */
+            --bg-color: #f3f4f6;
+            --glass-bg: rgba(255, 255, 255, 0.9);
+            --glass-border: rgba(0, 0, 0, 0.05);
+            --accent-color: #2563eb;
+            --accent-hover: #1d4ed8;
+            --accent-light: rgba(37, 99, 235, 0.08);
+            --text-main: #111827;
+            --text-muted: #6b7280;
+            --danger: #ef4444;
+            --success: #10b981;
+            --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+            --font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        }
+
+
+        * { margin: 0; padding: 0; box-sizing: border-box; outline: none; -webkit-tap-highlight-color: transparent; }
+
+
+        body {
+            background-color: var(--bg-color);
+            background-image: 
+                radial-gradient(circle at 15% 15%, rgba(37, 99, 235, 0.04) 0%, transparent 40%),
+                radial-gradient(circle at 85% 85%, rgba(16, 185, 129, 0.04) 0%, transparent 40%);
+            color: var(--text-main);
+            font-family: var(--font-family);
+            min-height: 100vh;
+            padding-bottom: 20px;
+        }
+
+
+        /* --- Layout & Utility --- */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            padding-bottom: 100px; /* Space for chat/fab */
+        }
+
+
+        .hidden { display: none !important; }
+        .fade-in { animation: fadeIn 0.3s ease-in-out; }
+
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+
+        /* --- DASHBOARD STYLES --- */
+        .dashboard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        .dashboard-title { font-size: 1.8rem; font-weight: 800; color: var(--text-main); }
+        
+        .projects-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+        }
+
+
+        .project-card {
+            background: #fff;
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: var(--card-shadow);
+            transition: all 0.2s ease;
+            cursor: pointer;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            min-height: 160px;
+        }
+
+
+        .project-card:hover { transform: translateY(-3px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); border-color: var(--accent-light); }
+
+
+        .project-card.new-card {
+            border: 2px dashed #cbd5e1;
+            background: transparent;
+            box-shadow: none;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+        }
+        .project-card.new-card:hover { border-color: var(--accent-color); color: var(--accent-color); background: rgba(255,255,255,0.5); }
+
+
+        .p-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 5px; }
+        .p-version { font-size: 0.8rem; color: var(--text-muted); background: #f3f4f6; padding: 2px 8px; border-radius: 10px; display: inline-block; margin-bottom: 10px; }
+        .p-meta { font-size: 0.85rem; color: var(--text-muted); margin-top: auto; }
+        .p-actions { position: absolute; top: 15px; right: 15px; }
+        
+        .btn-icon-only { background: transparent; border: none; color: var(--text-muted); cursor: pointer; padding: 5px; font-size: 1rem; }
+        .btn-icon-only:hover { color: var(--danger); }
+
+
+        /* --- EDITOR STYLES --- */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+
+
+        .hud-panel {
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 15px 20px;
+            margin-bottom: 20px;
+            box-shadow: var(--card-shadow);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+
+        .hud-left-group { display: flex; align-items: center; gap: 15px; }
+        .back-btn { background: #e5e7eb; border: none; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-main); transition: 0.2s; }
+        .back-btn:hover { background: #d1d5db; }
+
+
+        .hud-item { display: flex; flex-direction: column; }
+        .hud-label { font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; }
+        .hud-value { font-size: 1rem; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 5px; }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; background-color: var(--success); }
+
+
+        .nav-tabs { display: flex; gap: 8px; margin-bottom: 20px; overflow-x: auto; padding-bottom: 5px; scrollbar-width: none; }
+        .nav-tab { background: #fff; border: 1px solid var(--glass-border); color: var(--text-muted); padding: 8px 16px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.9rem; white-space: nowrap; transition: all 0.2s; flex-shrink: 0; }
+        .nav-tab.active { background: var(--accent-color); color: white; border-color: var(--accent-color); box-shadow: 0 4px 10px rgba(37, 99, 235, 0.25); }
+
+
+        .main-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
+        
+        .glass-card { background: #fff; border: 1px solid var(--glass-border); border-radius: 16px; padding: 20px; box-shadow: var(--card-shadow); margin-bottom: 20px; }
+        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid #f0f0f0; padding-bottom: 12px; }
+        .card-title { font-size: 1.1rem; color: var(--text-main); font-weight: 700; display: flex; align-items: center; gap: 8px; }
+
+
+        .form-group { margin-bottom: 15px; }
+        .form-label { display: block; margin-bottom: 5px; color: var(--text-main); font-size: 0.8rem; font-weight: 600; }
+        .form-input, .form-textarea, .form-select { width: 100%; background: #f9fafb; border: 1px solid #e5e7eb; color: var(--text-main); padding: 10px 12px; border-radius: 8px; font-family: var(--font-family); font-size: 16px; transition: all 0.2s; }
+        .form-input:focus, .form-textarea:focus { background: #fff; border-color: var(--accent-color); box-shadow: 0 0 0 3px var(--accent-light); }
+        .form-textarea { min-height: 100px; resize: vertical; }
+
+
+        .btn { background: white; border: 1px solid #e5e7eb; color: var(--text-main); padding: 8px 14px; border-radius: 8px; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-weight: 600; font-size: 0.9rem; }
+        .btn:hover { background: #f3f4f6; }
+        .btn-primary { background: var(--accent-color); border-color: var(--accent-color); color: white; }
+        .btn-primary:hover { background: var(--accent-hover); }
+        .btn-danger { background: #fee2e2; border-color: #fee2e2; color: var(--danger); }
+        
+        /* Tasks */
+        .task-item { display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: 8px; background: #f9fafb; margin-bottom: 6px; }
+        .task-item.completed { opacity: 0.5; }
+        .task-item.completed span { text-decoration: line-through; }
+        .tag-badge { font-size: 0.65rem; padding: 2px 6px; border-radius: 12px; background: #e0e7ff; color: var(--accent-color); font-weight: 600; }
+
+
+        /* AI Widget */
+        .ai-widget { position: fixed; bottom: 0; right: 0; width: 100%; height: 100%; background: #fff; z-index: 2000; transform: translateY(120%); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); display: flex; flex-direction: column; }
+        @media (min-width: 768px) {
+            .ai-widget { width: 380px; height: 550px; bottom: 20px; right: 20px; border-radius: 16px; border: 1px solid #e5e7eb; box-shadow: 0 10px 40px rgba(0,0,0,0.15); }
+        }
+        .ai-widget.open { transform: translateY(0); }
+        
+        .ai-header { padding: 15px; background: var(--accent-color); color: white; display: flex; justify-content: space-between; align-items: center; }
+        @media (min-width: 768px) { .ai-header { border-radius: 15px 15px 0 0; } }
+        
+        .ai-body { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; background: #f9fafb; }
+        .ai-message { padding: 10px 14px; border-radius: 10px; max-width: 85%; font-size: 0.9rem; line-height: 1.5; }
+        .ai-message.user { align-self: flex-end; background: var(--accent-color); color: white; border-bottom-right-radius: 2px; }
+        .ai-message.bot { align-self: flex-start; background: white; color: var(--text-main); border: 1px solid #e5e7eb; border-bottom-left-radius: 2px; }
+        .ai-footer { padding: 15px; background: white; border-top: 1px solid #e5e7eb; display: flex; gap: 8px; }
+        @media (min-width: 768px) { .ai-footer { border-radius: 0 0 16px 16px; } }
+
+
+        .ai-toggle-btn { position: fixed; bottom: 20px; right: 20px; width: 60px; height: 60px; border-radius: 50%; background: var(--accent-color); color: white; font-size: 1.5rem; border: none; cursor: pointer; z-index: 1500; box-shadow: 0 4px 15px rgba(37, 99, 235, 0.4); display: flex; align-items: center; justify-content: center; }
+        .ai-widget.open ~ .ai-toggle-btn { display: none; }
+
+
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            .container { padding: 15px; padding-bottom: 90px; }
+            .main-grid { grid-template-columns: 1fr; }
+            .hud-panel { padding: 12px; gap: 12px; }
+            .hud-item.hide-mobile { display: none; }
+            .hud-value { font-size: 0.9rem; }
+            .projects-grid { grid-template-columns: 1fr; }
+        }
+        
+        /* Markdown Code in AI */
+        .ai-message.bot code { background: #f1f5f9; padding: 2px 4px; border-radius: 4px; font-family: monospace; color: #d63384; }
+    </style>
+</head>
+<body>
+
+
+    <div class="container">
+        
+        <div id="view-dashboard" class="fade-in">
+            <header class="dashboard-header">
+                <div>
+                    <h1 class="dashboard-title"><i class="fas fa-layer-group"></i> Meus Projetos</h1>
+                    <p style="color:var(--text-muted); font-size:0.9rem;">Gerencie todas as suas criações em um só lugar.</p>
+                </div>
+            </header>
+
+
+            <div class="projects-grid" id="projects-grid">
+                <div class="project-card new-card" onclick="createNewProject()">
+                    <i class="fas fa-plus-circle" style="font-size: 2rem; margin-bottom: 10px;"></i>
+                    <span style="font-weight: 600;">Novo Projeto</span>
+                </div>
+            </div>
+        </div>
+
+
+        <div id="view-editor" class="hidden fade-in">
+            <header class="hud-panel">
+                <div class="hud-left-group">
+                    <button class="back-btn" onclick="goToDashboard()"><i class="fas fa-arrow-left"></i></button>
+                    <div class="hud-item">
+                        <span class="hud-label">Projeto</span>
+                        <span class="hud-value" id="hud-project-name">...</span>
+                    </div>
+                </div>
+                
+                <div class="hud-item">
+                    <span class="hud-label">Versão</span>
+                    <span class="hud-value"><i class="fas fa-code-branch"></i> <span id="hud-version">1.0.0</span></span>
+                </div>
+                
+                <div class="hud-item hide-mobile">
+                    <span class="hud-label">Status</span>
+                    <span class="hud-value"><div class="status-dot"></div> Online</span>
+                </div>
+                
+                <div class="hud-item">
+                    <button class="btn" style="padding: 6px 10px; font-size: 0.8rem;" onclick="exportProject()"><i class="fas fa-download"></i> <span class="hide-mobile">Backup</span></button>
+                </div>
+            </header>
+
+
+            <nav class="nav-tabs" id="nav-tabs-container"></nav>
+
+
+            <div class="main-grid">
+                <section>
+                    <div class="glass-card">
+                        <div class="card-header">
+                            <h2 class="card-title" id="stage-title">...</h2>
+                            <div style="display: flex; gap: 8px;">
+                                <button class="btn" onclick="triggerAIAnalysis()"><i class="fas fa-magic"></i> <span class="hide-mobile">IA</span></button>
+                                <button class="btn btn-primary" onclick="saveActiveProject(true)"><i class="fas fa-save"></i></button>
+                            </div>
+                        </div>
+                        <div id="dynamic-form-container"></div>
+                    </div>
+
+
+                    <div class="glass-card">
+                        <div class="card-header">
+                            <h3 class="card-title" style="font-size:1rem;"><i class="fas fa-history"></i> Histórico</h3>
+                            <button class="btn" onclick="clearTimeline()" style="padding: 4px 8px; font-size: 0.75rem;">Limpar</button>
+                        </div>
+                        <div id="timeline-container" style="max-height: 150px; overflow-y: auto;"></div>
+                    </div>
+                </section>
+
+
+                <aside>
+                    <div class="glass-card">
+                        <div class="card-header">
+                            <h3 class="card-title" style="font-size:1rem;"><i class="fas fa-check-circle"></i> Tarefas</h3>
+                            <button class="btn btn-primary" style="padding: 4px 8px; font-size:0.75rem;" onclick="generateCommit()">Git Msg</button>
+                        </div>
+                        <div class="form-group" style="display: flex; gap: 5px;">
+                            <input type="text" id="new-task-input" class="form-input" placeholder="Tarefa..." style="flex:1">
+                            <select id="new-task-cat" class="form-select" style="width: 70px; padding: 5px;">
+                                <option value="Dev">Dev</option>
+                                <option value="Bug">Bug</option>
+                                <option value="Idea">Idea</option>
+                            </select>
+                            <button class="btn btn-primary" onclick="addTask()" style="padding: 0 10px;"><i class="fas fa-plus"></i></button>
+                        </div>
+                        <div id="task-list"></div>
+                    </div>
+                </aside>
+            </div>
+        </div>
+    </div>
+
+
+    <button class="ai-toggle-btn" onclick="toggleAI()"><i class="fas fa-comment-dots"></i></button>
+    <div class="ai-widget" id="ai-widget">
+        <div class="ai-header">
+            <span style="font-weight:700;"><i class="fas fa-robot"></i> KeyMaster Gemini</span>
+            <div>
+                <button class="btn" style="background:rgba(255,255,255,0.2); border:none; color:white; padding: 4px 8px;" onclick="promptApiKey()"><i class="fas fa-key"></i></button>
+                <button class="btn" style="background:rgba(255,255,255,0.2); border:none; color:white; padding: 4px 8px;" onclick="toggleAI()"><i class="fas fa-times"></i></button>
+            </div>
+        </div>
+        <div class="ai-body" id="chat-history">
+            <div class="ai-message bot">Olá! Selecione um projeto e me chame para ajudar. Certifique-se de configurar sua chave Gemini.</div>
+        </div>
+        <div class="ai-footer">
+            <input type="text" id="ai-input" class="form-input" placeholder="Pergunte..." onkeypress="if(event.key==='Enter') sendAIMessage()">
+            <button class="btn btn-primary" onclick="sendAIMessage()"><i class="fas fa-paper-plane"></i></button>
+        </div>
+    </div>
+
+
+<script type="module">
+    import { GoogleGenerativeAI } from "@google/generative-ai";
+
+
+    // --- CONFIG & CONSTANTES ---
+    const STAGES = {
+        'idea': { label: 'Ideia', icon: 'fa-lightbulb', fields: ['nome_projeto', 'escopo', 'publico_alvo', 'valor_central'] },
+        'planning': { label: 'Plan', icon: 'fa-map', fields: ['stack_tech', 'banco_dados', 'design_system', 'estrutura_pastas'] },
+        'creation': { label: 'Code', icon: 'fa-code', fields: ['features_core', 'componentes', 'assets_necessarios'] },
+        'bugs': { label: 'Bugs', icon: 'fa-bug', fields: ['log_erros', 'prioridade_bug', 'status_fix'] },
+        'implementation': { label: 'Deploy', icon: 'fa-rocket', fields: ['dominio_url', 'env_vars', 'hospedagem', 'ci_cd'] },
+        'finalization': { label: 'Final', icon: 'fa-check-double', fields: ['docs_link', 'feedback_usuario', 'proximos_passos'] }
+    };
+
+
+    let appData = { projects: [] };
+    let activeProject = null; 
+    let globalApiKey = localStorage.getItem('keymaster_apikey') || '';
+    
+    let genAI = null;
+    let chatSession = null;
+
+
+    window.addEventListener('DOMContentLoaded', () => {
+        loadGlobalData();
+        renderDashboard();
+        if(globalApiKey) initAI();
+    });
+
+
+    function initAI() {
+        if(!globalApiKey) return;
+        try {
+            genAI = new GoogleGenerativeAI(globalApiKey);
+            chatSession = null;
+            console.log("Gemini inicializado");
+        } catch (e) {
+            console.error("Erro ao iniciar Gemini:", e);
+        }
+    }
+
+
+    // --- FUNÇÕES DE INTERFACE ---
+    function loadGlobalData() {
+        const saved = localStorage.getItem('keymaster_suite_db');
+        if (saved) appData = JSON.parse(saved);
+    }
+
+
+    function saveGlobalData() {
+        localStorage.setItem('keymaster_suite_db', JSON.stringify(appData));
+    }
+
+
+    window.saveActiveProject = function(notify = false) {
+        if (!activeProject) return;
+        activeProject.lastEdited = new Date().toISOString();
+        if (activeProject.data['nome_projeto']) activeProject.name = activeProject.data['nome_projeto'];
+        const index = appData.projects.findIndex(p => p.id === activeProject.id);
+        if (index !== -1) { appData.projects[index] = activeProject; saveGlobalData(); }
+        updateHUD();
+        if (notify && event) {
+            const btn = event.currentTarget;
+            const original = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-check"></i>';
+            setTimeout(() => btn.innerHTML = original, 1000);
+        }
+    }
+
+
+    window.renderDashboard = function() {
+        const grid = document.getElementById('projects-grid');
+        const newCard = grid.querySelector('.new-card');
+        grid.innerHTML = ''; 
+        grid.appendChild(newCard);
+        const sorted = [...appData.projects].sort((a,b) => new Date(b.lastEdited) - new Date(a.lastEdited));
+        sorted.forEach(p => {
+            const card = document.createElement('div');
+            card.className = 'project-card fade-in';
+            card.innerHTML = `
+                <div onclick="openProject(${p.id})" style="height:100%; display:flex; flex-direction:column;">
+                    <div class="p-title">${p.name || 'Sem Nome'}</div>
+                    <span class="p-version">v${p.version}</span>
+                    <div class="p-meta">Editado em: ${new Date(p.lastEdited).toLocaleDateString()}</div>
+                </div>
+                <div class="p-actions">
+                    <button class="btn-icon-only" onclick="deleteProject(event, ${p.id})"><i class="fas fa-trash"></i></button>
+                </div>`;
+            grid.appendChild(card);
+        });
+    }
+
+
+    window.createNewProject = function() {
+        const name = prompt("Nome do Projeto:", "Novo App");
+        if (!name) return;
+        const newProj = {
+            id: Date.now(), name: name, version: '1.0.0', lastEdited: new Date().toISOString(),
+            currentTab: 'idea', data: { 'nome_projeto': name }, tasks: [],
+            timeline: [{date: new Date().toISOString(), action: 'Projeto criado'}]
+        };
+        appData.projects.push(newProj);
+        saveGlobalData();
+        openProject(newProj.id);
+    }
+
+
+    window.deleteProject = function(e, id) {
+        e.stopPropagation();
+        if (confirm("Excluir projeto?")) {
+            appData.projects = appData.projects.filter(p => p.id !== id);
+            saveGlobalData();
+            renderDashboard();
+        }
+    }
+
+
+    window.openProject = function(id) {
+        activeProject = appData.projects.find(p => p.id === id);
+        if (!activeProject) return;
+        document.getElementById('view-dashboard').classList.add('hidden');
+        document.getElementById('view-editor').classList.remove('hidden');
+        renderTabs(); renderForm(); renderTasks(); renderTimeline(); updateHUD();
+        chatSession = null;
+        document.getElementById('chat-history').innerHTML = `<div class="ai-message bot">Contexto: ${activeProject.name} carregado.</div>`;
+    }
+
+
+    window.goToDashboard = function() {
+        saveActiveProject();
+        activeProject = null;
+        document.getElementById('view-editor').classList.add('hidden');
+        document.getElementById('view-dashboard').classList.remove('hidden');
+        renderDashboard();
+    }
+
+
+    window.updateHUD = function() {
+        if(!activeProject) return;
+        document.getElementById('hud-project-name').innerText = activeProject.name;
+        document.getElementById('hud-version').innerText = activeProject.version;
+    }
+
+
+    window.renderTabs = function() {
+        const container = document.getElementById('nav-tabs-container');
+        container.innerHTML = '';
+        Object.keys(STAGES).forEach(key => {
+            const stage = STAGES[key];
+            const btn = document.createElement('button');
+            btn.className = `nav-tab ${activeProject.currentTab === key ? 'active' : ''}`;
+            btn.innerHTML = `<i class="fas ${stage.icon}"></i> ${stage.label}`;
+            btn.onclick = () => { activeProject.currentTab = key; renderTabs(); renderForm(); saveActiveProject(); };
+            container.appendChild(btn);
+        });
+    }
+
+
+    window.renderForm = function() {
+        const container = document.getElementById('dynamic-form-container');
+        const stageConfig = STAGES[activeProject.currentTab];
+        document.getElementById('stage-title').innerHTML = `<i class="fas ${stageConfig.icon}"></i> ${stageConfig.label}`;
+        container.innerHTML = '';
+        stageConfig.fields.forEach(field => {
+            const div = document.createElement('div');
+            div.className = 'form-group';
+            div.innerHTML = `<label class="form-label">${field.replace(/_/g, ' ').toUpperCase()}</label>`;
+            const input = field.includes('log') || field.includes('escopo') ? document.createElement('textarea') : document.createElement('input');
+            input.className = field.includes('log') || field.includes('escopo') ? 'form-textarea' : 'form-input';
+            input.value = activeProject.data[field] || '';
+            input.oninput = (e) => { activeProject.data[field] = e.target.value; };
+            div.appendChild(input);
+            container.appendChild(div);
+        });
+    }
+
+
+    window.renderTasks = function() {
+        const list = document.getElementById('task-list');
+        list.innerHTML = '';
+        activeProject.tasks.forEach((t, i) => {
+            const div = document.createElement('div');
+            div.className = `task-item ${t.done ? 'completed' : ''}`;
+            div.innerHTML = `<input type="checkbox" ${t.done ? 'checked' : ''} onchange="toggleTask(${i})">
+                <span style="flex:1;">${t.text}</span><i class="fas fa-times" onclick="deleteTask(${i})"></i>`;
+            list.appendChild(div);
+        });
+    }
+
+
+    window.renderTimeline = function() {
+        const container = document.getElementById('timeline-container');
+        container.innerHTML = activeProject.timeline?.map(t => `<div style="font-size:0.8rem; border-left:2px solid blue; padding-left:5px; margin-bottom:5px;">${t.action}</div>`).reverse().join('') || 'Vazio';
+    }
+
+
+    window.addTask = function() {
+        const input = document.getElementById('new-task-input');
+        if (!input.value) return;
+        activeProject.tasks.push({ text: input.value, cat: 'Dev', done: false });
+        input.value = ''; renderTasks(); saveActiveProject();
+    }
+    window.toggleTask = i => { activeProject.tasks[i].done = !activeProject.tasks[i].done; renderTasks(); saveActiveProject(); }
+    window.deleteTask = i => { activeProject.tasks.splice(i, 1); renderTasks(); saveActiveProject(); }
+
+
+    window.exportProject = function() {
+        if(!activeProject) return;
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(activeProject));
+        const dlNode = document.createElement('a');
+        dlNode.setAttribute("href", dataStr);
+        dlNode.setAttribute("download", `${activeProject.name.replace(/\s+/g, '_')}_v${activeProject.version}.dat`);
+        document.body.appendChild(dlNode);
+        dlNode.click();
+        dlNode.remove();
+    }
+    
+    window.generateCommit = function() {
+        const completed = activeProject.tasks.filter(t => t.done).map(t => `feat(${t.cat.toLowerCase()}): ${t.text}`);
+        if (completed.length === 0) return alert("Nada concluído.");
+        navigator.clipboard.writeText(completed.join('\n')).then(() => alert("Copiado!"));
+    }
+
+
+    window.clearTimeline = function() {
+        if(activeProject && activeProject.timeline) {
+            activeProject.timeline = [];
+            saveActiveProject();
+            renderTimeline();
+        }
+    }
+
+
+    // --- GEMINI IA FUNÇÕES REESCRITAS ---
+    window.toggleAI = () => document.getElementById('ai-widget').classList.toggle('open');
+    
+    window.promptApiKey = function() {
+        const key = prompt("Insira sua API Key do Google AI Studio:", globalApiKey);
+        if (key) {
+            globalApiKey = key;
+            localStorage.setItem('keymaster_apikey', key);
+            initAI();
+            alert("Chave salva! Tente enviar uma mensagem agora.");
+        }
+    }
+
+
+    window.sendAIMessage = async function() {
+        const input = document.getElementById('ai-input');
+        const text = input.value;
+        if (!text) return;
+        
+        if(!globalApiKey || !genAI) {
+            alert("Configure a API Key na engrenagem.");
+            return;
+        }
+        
+        appendMessage('user', text);
+        input.value = '';
+
+
+        try {
+            // Configura o modelo corretamente com apiVersion v1
+            const model = genAI.getGenerativeModel({ 
+                model: "gemini-1.5-flash"
+            }, { apiVersion: 'v1' });
+
+
+            // Se não houver sessão ou se houver um erro anterior, cria nova sessão
+            if (!chatSession) {
+                // Prepara histórico inicial com contexto do projeto
+                let history = [
+                    { role: "user", parts: [{ text: "Você é o KeyMaster AI, um assistente expert em projetos." }] },
+                    { role: "model", parts: [{ text: "Entendido. Sou o KeyMaster AI, especialista em desenvolvimento de projetos. Como posso ajudar?" }] }
+                ];
+
+
+                // Adiciona contexto do projeto ativo se existir
+                if (activeProject) {
+                    const stage = STAGES[activeProject.currentTab];
+                    history.push({ 
+                        role: "user", 
+                        parts: [{ text: `Contexto do projeto: ${activeProject.name}. Estou na fase ${stage.label}.` }] 
+                    });
+                    history.push({ 
+                        role: "model", 
+                        parts: [{ text: `Perfeito! Entendo que você está trabalhando no projeto "${activeProject.name}" na fase ${stage.label}. Vamos lá!` }] 
+                    });
+                }
+
+
+                chatSession = model.startChat({ history: history });
+            }
+
+
+            const result = await chatSession.sendMessage(text);
+            const response = await result.response;
+            appendMessage('bot', response.text());
+
+
+        } catch (error) { 
+            console.error("Erro na IA:", error);
+            
+            // Reseta a sessão em caso de erro
+            chatSession = null;
+            
+            let errorMsg = "Erro na comunicação com a IA: ";
+            
+            if (error.message?.includes("fetch") || error.message?.includes("network")) {
+                errorMsg += "Problema de rede. Verifique sua conexão.";
+            } else if (error.message?.includes("API key") || error.message?.includes("403")) {
+                errorMsg += "API Key inválida ou sem permissão. Configure uma chave válida.";
+            } else if (error.message?.includes("404")) {
+                errorMsg += "Endpoint não encontrado. Verifique o modelo e versão da API.";
+            } else {
+                errorMsg += error.message || "Erro desconhecido.";
+            }
+            
+            appendMessage('bot', errorMsg);
+        }
+    }
+
+
+    window.triggerAIAnalysis = async function() {
+        if(!activeProject) {
+            alert("Selecione um projeto primeiro.");
+            return;
+        }
+        
+        const stage = STAGES[activeProject.currentTab];
+        let msg = `Analise a fase ${stage.label} do projeto ${activeProject.name}. `;
+        msg += `Dados atuais:\n`;
+        
+        stage.fields.forEach(f => {
+            const value = activeProject.data[f] || 'não definido';
+            msg += `- ${f}: ${value}\n`;
+        });
+        
+        msg += "\nCom base nestes dados, o que posso melhorar? Quais são os próximos passos recomendados?";
+        
+        toggleAI();
+        document.getElementById('ai-input').value = msg;
+        sendAIMessage();
+    }
+
+
+    function appendMessage(role, text) {
+        const history = document.getElementById('chat-history');
+        const div = document.createElement('div');
+        div.className = `ai-message ${role}`;
+        div.innerHTML = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
+        history.appendChild(div);
+        history.scrollTop = history.scrollHeight;
+    }
+</script>
+</body>
+</html>
